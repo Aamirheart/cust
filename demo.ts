@@ -63,6 +63,12 @@ const appActions = {
 
     if (!enabled) {
       attachLocalCamera();
+    } else {
+      // Clear the video when turning camera off
+      const participant = room.localParticipant;
+      const tile = document.getElementById(`p-${participant.identity}`);
+      const video = tile?.querySelector('video') as HTMLVideoElement;
+      if (video) video.srcObject = null;
     }
   },
 
