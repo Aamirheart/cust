@@ -60,7 +60,16 @@ lobbyMic.onclick = () => {
     micEnabled = !micEnabled;
     lobbyMic.classList.toggle('off', !micEnabled);
     lobbyMic.innerText = micEnabled ? '🎤' : '🔇';
-    localTracks.forEach(t => { if (t.kind === Track.Kind.Audio) t.setEnabled(micEnabled); });
+    
+    localTracks.forEach(t => {
+        if (t.kind === Track.Kind.Audio) {
+            if (micEnabled) {
+                t.unmute();
+            } else {
+                t.mute();
+            }
+        }
+    });
 };
 
 lobbyCam.onclick = () => {
@@ -70,16 +79,24 @@ lobbyCam.onclick = () => {
 
     localTracks.forEach(t => {
         if (t.kind === Track.Kind.Video) {
-            t.setEnabled(camEnabled); // Hard stop/start hardware stream
+            const videoTrack = t as LocalVideoTrack;
             
-            const videoEl = lobbyPreview.querySelector('video');
-            if (videoEl) {
-                // Professional fix: Toggle element display and overlay
-                videoEl.style.display = camEnabled ? "block" : "none";
+            if (camEnabled) {
+                // Turn camera back on
+                videoTrack.unmute();
+            } else {
+                // Turn camera off
+                videoTrack.mute();
             }
-            camOffOverlay.style.display = camEnabled ? "none" : "flex";
         }
     });
+
+    // Update UI
+    const videoEl = lobbyPreview.querySelector('video');
+    if (videoEl) {
+        videoEl.style.display = camEnabled ? "block" : "none";
+    }
+    camOffOverlay.style.display = camEnabled ? "none" : "flex";
 };
 
 // 3. JOIN CALL LOGIC
@@ -100,9 +117,15 @@ if (joinBtn) {
             // Pass initial state to publication
             for (const track of localTracks) {
                 if (track.kind === Track.Kind.Audio) {
-                    await room.localParticipant.publishTrack(track, { muted: !micEnabled });
+                    await room.localParticipant.publishTrack(track);
+                    if (!micEnabled) {
+                        await room.localParticipant.setMicrophoneEnabled(false);
+                    }
                 } else if (track.kind === Track.Kind.Video) {
-                    await room.localParticipant.publishTrack(track, { muted: !camEnabled });
+                    await room.localParticipant.publishTrack(track);
+                    if (!camEnabled) {
+                        await room.localParticipant.setCameraEnabled(false);
+                    }
                 }
             }
 
